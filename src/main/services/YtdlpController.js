@@ -43,7 +43,7 @@ export const YtdlpController = {
         fs.mkdirSync(downloadDir, { recursive: true });
       }
 
-      console.log(`🔍 الصائد الذكي يبدأ الفحص والتحميل لجودة: ${formatId}`); //[cite: 18]
+      console.log(`🔍 Starting scan and download for quality: ${formatId}`); //[cite: 18]
 
       // إعداد المصفوفة الأساسية للـ Arguments
       let args = ["--ffmpeg-location", binFolder];
@@ -217,11 +217,11 @@ export const YtdlpController = {
             resolve(uniqueFormats);
           } catch (e) {
             console.error(
-              "❌ خطأ في معالجة الـ JSON (الداتا اللي راجعة مش JSON سليم):",
+              "❌ Error processing JSON (returned data is not valid JSON):",
               e.message,
             );
-            // طباعة أول 100 حرف من اللي راجع عشان نعرف إيه اللي بوظ الـ JSON
-            console.log("المخرجات الخاطئة:", stdout.substring(0, 100));
+            // Print the first 100 characters of the output to help debug the invalid JSON
+            console.log("Invalid output:", stdout.substring(0, 100));
             reject(e);
           }
         },

@@ -76,11 +76,11 @@ async function setupLocalBinaries() {
   ytdlpPath = path.join(binDir, "yt-dlp.exe");
 
   if (!fs.existsSync(ytdlpPath)) {
-    console.log("yt-dlp غير موجود، جاري التحميل من GitHub...");
+    console.log("yt-dlp not found, downloading from GitHub...");
     const url =
       "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
     await downloadBinaryWithRedirects(url, ytdlpPath);
-    console.log("تم تحميل yt-dlp بنجاح");
+    console.log("yt-dlp downloaded successfully");
   }
 }
 
@@ -251,7 +251,7 @@ function startLocalServer() {
         body += chunk;
       });
       req.on("end", async () => {
-        console.log("📨 سيرفر Double D استقبل:", body);
+        console.log("📨 Double D server received:", body);
         try {
           const data = JSON.parse(body);
 
@@ -403,7 +403,7 @@ process.stdin.on('end', () => process.exit(0));
     const registryKey = `HKEY_CURRENT_USER\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.joe.doubled`;
     const command = `reg add "${registryKey}" /ve /t REG_SZ /d "${jsonFilePath}" /f`;
     exec(command);
-    console.log("✅ تم تحديث الجسر بنجاح لإصلاح خطأ الـ JSON!");
+    console.log("✅ Bridge updated successfully to fix JSON issue!");
   } catch (err) {
     console.error(err.message);
   }
@@ -417,7 +417,7 @@ async function startDownload(targetUrl, qualityRule = "best") {
     targetUrl = targetUrl.targetUrl || targetUrl.url || '';
   }
 
-  console.log(`🚀 بدء مهمة تحميل: ${targetUrl} - جودة: ${qualityRule}`);
+  console.log(`🚀 Starting download task: ${targetUrl} - quality: ${qualityRule}`);
 
   // Quick bypass for direct-downloads (non-video files)
   const lower = (targetUrl || '').toLowerCase();
@@ -491,7 +491,7 @@ async function startDownload(targetUrl, qualityRule = "best") {
 
       // منع التكرار
       if (fs.existsSync(finalPath)) {
-        console.log("⚠️ الملف موجود بالفعل:", finalName);
+        console.log("⚠️ File already exists:", finalName);
         return;
       }
 
@@ -872,14 +872,14 @@ ipcMain.on("command-update-ytdlp", async (event) => {
     "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe";
   const tempPath = `${ytdlpPath}.tmp`;
 
-  console.log("🔄 جاري سحب الـ Binary الجديد مباشرة من سيرفرات GitHub...");
+  console.log("🔄 Pulling latest binary directly from GitHub servers...");
   try {
     await downloadBinaryWithRedirects(downloadUrl, tempPath);
     if (fs.existsSync(ytdlpPath)) {
       fs.unlinkSync(ytdlpPath);
     }
     fs.renameSync(tempPath, ytdlpPath);
-    console.log("🎉 اكتمل استبدال وتثبيت الملف بنجاح!");
+    console.log("🎉 Replacement and installation completed successfully!");
 
     exec(`"${ytdlpPath}" --version`, (versionErr, newVersionStdout) => {
       const newVer =
@@ -910,7 +910,7 @@ async function setupFfmpeg() {
   ffmpegPath = path.join(binDir, "ffmpeg.exe");
 
   if (!fs.existsSync(ffmpegPath)) {
-    console.log("ffmpeg غير موجود، جاري التحميل من GitHub...");
+    console.log("ffmpeg not found, downloading from GitHub...");
     // استخدام رابط مباشر للملف التنفيذي
     const exeUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip";
     const zipPath = path.join(binDir, "ffmpeg.zip");
@@ -946,7 +946,7 @@ async function setupFfmpeg() {
         }
       );
     });
-    console.log("✅ تم تحميل وتجهيز ffmpeg بنجاح");
+    console.log("✅ ffmpeg downloaded and prepared successfully");
   }
 }
 

@@ -70,7 +70,7 @@ export const Aria2Controller = {
     const downloadDir = path.join(app.getPath("downloads"), "DoubleD");
 
     console.log(
-      "🤖 جاري إيقاظ البلدوزر بالسرعة القصوى.. مسار الحفظ:",
+      "🤖 Starting aria2 (waking up the downloader) with download path:",
       downloadDir,
     );
 
