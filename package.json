@@ -1,0 +1,58 @@
+{
+  "name": "double-d",
+  "version": "1.0.0",
+  "description": "Advanced Turbo Download Manager",
+  "main": "dist-electron/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && electron-builder"
+  },
+  "keywords": [],
+  "author": "Youssef Waleed",
+  "license": "ISC",
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.8.1",
+    "vite": "^6.4.2",
+    "vite-plugin-electron": "^0.29.1"
+  },
+  "dependencies": {
+    "bufferutil": "^4.1.0",
+    "utf-8-validate": "^6.0.6",
+    "vue": "^3.5.35",
+    "ws": "^8.13.0"
+  },
+  "build": {
+    "appId": "com.joe.doubled",
+    "rollupOptions": {
+      "external": [
+        "ws"
+      ]
+    },
+    "productName": "Double D",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    }
+  }
+}

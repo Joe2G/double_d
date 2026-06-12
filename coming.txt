@@ -1,0 +1,313 @@
+دمج الفيديو والصوت (Muxing) للجودات العالية: يوتيوب في الجودات العالية (مثل 1080p فما فوق) بيفصل الفيديو عن الصوت. باقيلنا نتأكد إن البرنامج لو حمل فيديو وصوت منفصلين، يستدعي أداة زي FFmpeg في الخلفية لدمجهم تلقائياً في ملف MP4 واحد بدون تدخل من المستخدم.
+
+إدارة الطابور وحالة التحميل (Download Queue & Status): ربط الـ UI بالـ Aria2 بشكل كامل لعرض سرعة التحميل الحالية، الوقت المتبقي، شريط التقدم (Progress Bar)، والتحكم في إيقاف/استئناف التحميل (Pause/Resume).
+
+التعامل مع الصيغ والروابط العادية (Non-Video Downloads): التأكد من أن الأكستنشن إذا قفشت رابط تحميل مباشر عادي (مثل ملف .zip أو .exe أو .pdf)، يتم تحويله فوراً لـ Aria2 مباشرة دون المرور بـ yt-dlp.
+
+اللمسات النهائية للـ UI (Premium Dark Theme): تقفيل واجهة المستخدم بالشكل الممتع والمريح للعين اللي بتحبه (Dark Theme هادي مع Contrast عالي)، مع تنظيم قائمة "التحميلات المكتملة" وقائمة "التحميلات الحالية".
+
+
+
+
+
+
+
+
+
+يا بطل، الكود بتاعك وصل لمرحلة ممتازة ومستقر جداً، وبداية مشروع "Double-D" بتعكس تفكير برمجي عالي. بس بما إننا بنبني "وحش تحميل" بلمسة Premium، دايماً فيه مساحة لهندسة الكود (Refactoring) عشان يكون أسرع، أنضف، وأقل استهلاكاً لموارد الجهاز.
+
+إليك قائمة بالتحسينات اللي هتنقل الكود لمستوى احترافي، والحاجات اللي محتاجين نتخلص منها:
+
+### 🚀 أولاً: تحسينات وإضافات هترفع من أداء الأبلكيشن (What to Add/Improve)
+
+* **مدير المسارات (Binary Manager):**
+* حالياً إنت بتعمل فحص لمسارات الأدوات (`isDev`, `appDataPath`) داخل كل دالة في `YtdlpController` و `Aria2Controller` و `main.js`.
+* **التحسين:** إنشاء ملف `BinaryManager.js` يكون هو المسؤول الوحيد عن تحديد مسارات (yt-dlp, aria2c, ffmpeg) وتصديرها لباقي الملفات. ده هيمنع التكرار تماماً.
+
+
+* **الانتقال من الـ Polling إلى الـ WebSockets (Aria2 Events):**
+* الاعتماد على `setInterval` كل ثانية عشان تشوف الـ `virtualTasks` خلصت ولا لأ عشان تدمج الفيديو (Polling) بيستهلك المعالج (CPU).
+* **التحسين:** `aria2` بيدعم WebSockets. نقدر نتصل بـ `ws://localhost:6800/jsonrpc` ونستقبل حدث `aria2.onDownloadComplete` فوراً. ده هيخلي الدمج يبدأ في "فيمتو ثانية" بعد التحميل بدون ما نرهق التطبيق بالأسئلة المتكررة.
+
+
+* **نظام تنظيف الملفات المؤقتة (Garbage Collection):**
+* لو المستخدم قفل البرنامج فجأة أو النت فصل، ملفات `temp_video.mp4` و `temp_audio.m4a` هتفضل مرمية في فولدر `DoubleD` وتاخد مساحة عالفاضي.
+* **التحسين:** إضافة دالة بتشتغل مع بداية التطبيق (أو عند فشل التحميل) تفحص الفولدر وتمسح أي ملفات بتبدأ بـ `temp_` وملهاش تحميل شغال.
+
+
+* **فصل مسؤوليات FFmpeg (Separation of Concerns):**
+* دالة `mergeVideoAudio` موجودة حالياً جوه `Aria2Controller`. برمجياً، الـ Aria2 وظيفته التحميل فقط.
+* **التحسين:** عمل `FFmpegController.js` يكون مخصص لعمليات الدمج، تحويل الصيغ، أو حتى استخراج صورة مصغرة (Thumbnail) للفيديو في المستقبل.
+
+
+* **التحكم في طابور التحميلات (Queue Limit):**
+* لو المستخدم طلب تحميل 5 فيديوهات 1080p في نفس الوقت، الأبلكيشن هيفتح 5 عمليات دمج FFmpeg و 5 × 16 اتصال Aria2، وده ممكن يهنج الجهاز.
+* **التحسين:** إضافة نظام طابور (Queue) بيسمح بدمج ملف واحد فقط في نفس الوقت، ويخلي الباقي في وضع الانتظار (Pending).
+
+
+
+---
+
+### 🗑️ ثانياً: حاجات ملهاش لازمة وبتمثل "عنق زجاجة" (What to Remove)
+
+* **الـ `setInterval` الخاصة بمراقبة الدمج في `main.js`:**
+* زي ما وضحنا، الدوران كل ثانية للبحث في `virtualTasks` بيخلي الكود معقد وعرضة للأخطاء (Race conditions). لازم تتشال تماماً بمجرد تفعيل الـ WebSockets.
+
+
+* **نظام الـ `virtualTasks` المعقد:**
+* أنت عامل مصفوفة بتخزن فيها الـ IDs الوهمية عشان تتابع ملفات الـ 1080p.
+* **الحذف:** الـ Aria2 بيطلع `GID` (رقم تعريفي) لكل تحميل. نقدر نربط الـ GID بتاع الفيديو بالـ GID بتاع الصوت ببساطة في `Map` صغيرة بدل اللوجيك المعقد بتاع الـ Virtual Tasks.
+
+
+* **تكرار استدعاء مسار `ffmpegPath`:**
+* في `main.js` مسار الـ ffmpeg متعرف، ولما بتيجي تدمج بتبعته لـ `Aria2Controller`. لو فصلنا الـ FFmpeg في كونترولر منفصل، المسار هيكون متعرف جواه وهنشيل التمرير الزائد ده من الدوال.
+
+
+* **أكواد تنظيف الفولدرات اليدوية في `main.js`:**
+* الكود اللي بيلف على مجلد الـ `bin` عشان يمسح المجلدات الفرعية الناتجة عن فك ضغط FFmpeg طويل شوية. يمكن استبداله بمكتبة مثل `adm-zip` لاستخراج `ffmpeg.exe` مباشرة للوجهة بدون ترك مخلفات.
+
+
+
+
+
+
+
+
+
+
+
+# Additional Critical Fixes
+
+The previous implementation still has several issues that must be fixed.
+
+## Important Constraints
+
+1. Do not break any existing functionality.
+2. Do not introduce new dependencies unless absolutely necessary.
+3. Preserve the current download architecture (aria2 + yt-dlp + FFmpeg + MergeQueue).
+4. Focus on fixing the user experience and task lifecycle management.
+5. Temporary files must remain completely internal and never be exposed to the user.
+
+---
+
+# 1. Temporary Files Are Not Being Fully Removed
+
+## Current Problem
+
+After downloads complete, only the final downloaded file is being cleaned up correctly, while temporary files remain on disk.
+
+Examples:
+
+* temp_video_*.mp4
+* temp_audio_*.m4a
+* any other temporary merge-related files
+
+This creates unnecessary disk usage and eventually accumulates garbage files.
+
+## Required Fix
+
+Ensure temporary files are deleted in ALL scenarios:
+
+### Successful Merge
+
+After FFmpeg successfully creates the final file:
+
+* Delete temporary video file.
+* Delete temporary audio file.
+* Delete any related temporary metadata files.
+* Verify deletion succeeded.
+
+### Merge Failure
+
+If FFmpeg fails:
+
+* Delete all temporary files.
+* Mark task as failed.
+* Do not leave orphaned files.
+
+### Download Failure
+
+If either audio or video download fails:
+
+* Delete all temporary files that were already created.
+* Remove merge tracking entries.
+* Update UI state properly.
+
+### Application Restart
+
+On startup:
+
+* Scan download/temp directories.
+* Remove abandoned temp files from previous sessions.
+
+No temporary files should survive unless actively being used.
+
+---
+
+# 2. File Size Is Missing For YouTube Downloads
+
+## Current Problem
+
+For:
+
+* merged YouTube downloads
+* audio-only downloads
+
+the UI often shows:
+
+* unknown size
+* incorrect size
+* placeholder text
+
+while direct downloads show proper file sizes.
+
+## Required Fix
+
+Ensure the UI displays correct file size information for:
+
+### Audio-only Downloads
+
+Display:
+
+* total size
+* downloaded size
+* progress percentage
+
+### Video + Audio Merge Downloads
+
+Display:
+
+* combined size
+* accurate progress
+* final expected size when available
+
+### Completed Downloads
+
+Display final file size after merge completion.
+
+The user should always know how large the download is.
+
+---
+
+# 3. High-Quality YouTube Downloads Must Appear As ONE Download
+
+## Current Problem
+
+When downloading a high-quality YouTube format:
+
+* video stream appears as one task
+* audio stream appears as another task
+
+This confuses users because they see two downloads for what they perceive as a single video.
+
+## Required Fix
+
+The UI must display ONLY ONE task.
+
+### Internal Behavior
+
+The application may still:
+
+* download video stream
+* download audio stream
+* merge both streams
+
+internally.
+
+### UI Behavior
+
+The user should see:
+
+ONE download item only.
+
+The task should represent:
+
+* combined progress
+* combined speed
+* combined ETA
+* combined status
+
+The user must never see separate video/audio download entries.
+
+---
+
+# 4. Temporary Files Must Never Appear In The UI
+
+## Current Problem
+
+Temporary files are still leaking into the task list.
+
+Examples:
+
+* temp_video_*.mp4
+* temp_audio_*.m4a
+* merge intermediate files
+
+These are implementation details and should never be visible.
+
+## Required Fix
+
+Temporary files must be completely hidden from the UI.
+
+### Requirements
+
+Do not display:
+
+* temp_video_*
+* temp_audio_*
+* temporary FFmpeg outputs
+* intermediate merge files
+* hidden processing artifacts
+
+The UI should only display:
+
+* the final intended media file
+* user-facing downloads
+
+No internal processing files should ever be visible.
+
+---
+
+# 5. Single Unified Download Experience
+
+For YouTube high-quality downloads:
+
+### What The User Should See
+
+One task:
+
+* Title
+* Size
+* Progress
+* Speed
+* ETA
+* Status
+
+### What Happens Internally
+
+1. Download video stream.
+2. Download audio stream.
+3. Merge streams.
+4. Clean temporary files.
+5. Mark task complete.
+
+All internal operations must remain invisible.
+
+The user should feel as if a single file is downloading from start to finish.
+
+---
+
+# Acceptance Criteria
+
+A fix is considered complete only if all of the following are true:
+
+* No temporary files remain after completion.
+* No temporary files remain after failure.
+* No abandoned temporary files remain after restart.
+* Audio-only downloads show correct file sizes.
+* Merged YouTube downloads show correct file sizes.
+* High-quality YouTube downloads appear as a single task.
+* Video and audio child downloads never appear separately.
+* Temporary files never appear in the UI.
+* Progress, speed, ETA, and status remain accurate throughout the entire download and merge lifecycle.
+* Existing download functionality continues to work without regressions.
